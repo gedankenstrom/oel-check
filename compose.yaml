@@ -1,0 +1,14 @@
+services:
+  oil-tracker:
+    image: ghcr.io/gedankenstrom/oel-check:latest
+    container_name: oil-tracker
+    restart: unless-stopped
+    ports:
+      - "9090:3000"
+    environment:
+      PORT: 3000
+    volumes:
+      - oil_data:/app/data
+
+volumes:
+  oil_data:
