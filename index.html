@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Öl-Check">
+<meta name="theme-color" content="#f4f7f3">
+<title>Öl-Tracker</title>
+<style>
+  :root {
+    --bg: #f4f7f3;
+    --surface: rgba(255, 255, 255, 0.86);
+    --surface-strong: #ffffff;
+    --surface-soft: rgba(255,255,255,0.72);
+    --border: rgba(35, 57, 43, 0.10);
+    --text: #17211b;
+    --muted: #647267;
+    --primary: #2f7a45;
+    --primary-strong: #215d33;
+    --danger: #c84f4f;
+    --danger-strong: #a73838;
+    --shadow: 0 18px 40px rgba(23, 33, 27, 0.10);
+    --radius-xl: 24px;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(circle at top left, #ffffff 0%, #eef5ed 35%, transparent 60%),
+      linear-gradient(180deg, #f7faf7 0%, var(--bg) 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 1160px;
+    margin: 0 auto;
+    padding:
+      calc(18px + var(--safe-top))
+      calc(14px + var(--safe-right))
+      calc(24px + var(--safe-bottom))
+      calc(14px + var(--safe-left));
+  }
+
+  .hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 22px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, rgba(255,255,255,0.94), rgba(236,243,235,0.90));
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    margin-bottom: 18px;
+  }
+
+  .hero-copy { min-width: 0; }
+
+  .hero h1 {
+    margin: 0 0 10px;
+    font-size: clamp(1.75rem, 5vw, 2.7rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    word-break: break-word;
+  }
+
+  .hero p {
+    margin: 0;
+    color: var(--muted);
+    max-width: 760px;
+    line-height: 1.5;
+    font-size: 0.98rem;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(47, 122, 69, 0.10);
+    color: var(--primary-strong);
+    font-weight: 700;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .summary-grid,
+  .content-grid {
+    display: grid;
+    gap: 16px;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 18px;
+  }
+
+  .content-grid {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .card {
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .stat-card { padding: 18px; }
+
+  .stat-label {
+    display: block;
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: clamp(1.3rem, 4.8vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .stat-sub {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+  }
+
+  .form-card,
+  .table-card { padding: 20px; }
+
+  .section-title {
+    margin: 0 0 6px;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+  }
+
+  .section-subtitle {
+    margin: 0 0 18px;
+    color: var(--muted);
+    line-height: 1.45;
+    font-size: 0.94rem;
+  }
+
+  .form-grid {
+    display: grid;
+    gap: 14px;
+  }
+
+  .field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .field label,
+  .toggle-label {
+    font-size: 0.94rem;
+    font-weight: 700;
+  }
+
+  input[type="date"],
+  input[type="number"] {
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid rgba(35, 57, 43, 0.12);
+    background: rgba(255,255,255,0.98);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 14px 15px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="date"]:focus,
+  input[type="number"]:focus {
+    border-color: rgba(47, 122, 69, 0.45);
+    box-shadow: 0 0 0 4px rgba(47, 122, 69, 0.10);
+  }
+
+  .toggle-group {
+    display: grid;
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  .toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid rgba(35, 57, 43, 0.10);
+    background: rgba(255,255,255,0.80);
+    border-radius: 16px;
+    min-width: 0;
+  }
+
+  .toggle input {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: var(--primary);
+    flex-shrink: 0;
+  }
+
+  .toggle span { min-width: 0; }
+
+  .toggle small {
+    display: block;
+    color: var(--muted);
+    margin-top: 2px;
+    font-size: 0.84rem;
+    line-height: 1.35;
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  button {
+    border: none;
+    cursor: pointer;
+    border-radius: 14px;
+    transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    font-weight: 700;
+    font-size: 0.96rem;
+    min-height: 48px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:hover { transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+
+  .primary-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    color: white;
+    padding: 14px 18px;
+    box-shadow: 0 14px 26px rgba(47, 122, 69, 0.22);
+  }
+
+  .secondary-btn {
+    background: rgba(47, 122, 69, 0.10);
+    color: var(--primary-strong);
+    padding: 14px 18px;
+  }
+
+  .ghost-btn {
+    background: rgba(100, 114, 103, 0.12);
+    color: #415045;
+    padding: 14px 18px;
+  }
+
+  .danger-btn {
+    background: linear-gradient(135deg, var(--danger), var(--danger-strong));
+    color: white;
+    padding: 14px 18px;
+    box-shadow: 0 14px 26px rgba(200, 79, 79, 0.20);
+  }
+
+  .table-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .mobile-hint {
+    display: none;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(47, 122, 69, 0.08);
+    color: var(--primary-strong);
+    font-size: 0.88rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 18px;
+    border: 1px solid rgba(35, 57, 43, 0.08);
+    background: rgba(255,255,255,0.78);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 980px;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: #f5f8f5;
+    color: #4b5a4f;
+    text-align: left;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 13px 12px;
+    border-bottom: 1px solid rgba(35, 57, 43, 0.08);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 13px 12px;
+    border-bottom: 1px solid rgba(35, 57, 43, 0.06);
+    vertical-align: middle;
+    font-size: 0.94rem;
+  }
+
+  tbody tr:hover { background: rgba(47, 122, 69, 0.04); }
+  tbody tr.oil-change { background: rgba(47, 122, 69, 0.08); }
+
+  .mono {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .badge-neutral {
+    background: rgba(100, 114, 103, 0.12);
+    color: #415045;
+  }
+
+  .badge-green {
+    background: rgba(47, 122, 69, 0.12);
+    color: var(--primary-strong);
+  }
+
+  .badge-blue {
+    background: rgba(53, 108, 184, 0.12);
+    color: #2d5d98;
+  }
+
+  .delete-btn {
+    background: rgba(200, 79, 79, 0.12);
+    color: var(--danger-strong);
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+
+  .delete-btn:hover {
+    background: rgba(200, 79, 79, 0.18);
+  }
+
+  .empty-state {
+    padding: 34px 18px;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  .helper {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 0.89rem;
+    line-height: 1.45;
+  }
+
+  .mobile-cards {
+    display: none;
+    gap: 12px;
+  }
+
+  .entry-card {
+    padding: 14px;
+    border-radius: 18px;
+    background: var(--surface-soft);
+    border: 1px solid rgba(35, 57, 43, 0.08);
+  }
+
+  .entry-card.oil-change {
+    background: rgba(47, 122, 69, 0.10);
+  }
+
+  .entry-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .entry-card-title {
+    font-weight: 800;
+    font-size: 1rem;
+    margin-bottom: 4px;
+  }
+
+  .entry-card-date {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .entry-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .entry-item {
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.72);
+    min-width: 0;
+  }
+
+  .entry-item-label {
+    display: block;
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin-bottom: 4px;
+  }
+
+  .entry-item-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .entry-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .entry-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(23, 33, 27, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    z-index: 1000;
+  }
+
+  .modal-backdrop.visible {
+    display: flex;
+  }
+
+  .modal {
+    width: min(100%, 420px);
+    background: rgba(255,255,255,0.96);
+    border: 1px solid rgba(35, 57, 43, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgba(23, 33, 27, 0.20);
+    padding: 20px;
+  }
+
+  .modal h3 {
+    margin: 0 0 8px;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+  }
+
+  .modal p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.45;
+    font-size: 0.95rem;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  @media (max-width: 980px) {
+    .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .content-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 720px) {
+    .page {
+      padding:
+        calc(12px + var(--safe-top))
+        calc(10px + var(--safe-right))
+        calc(18px + var(--safe-bottom))
+        calc(10px + var(--safe-left));
+    }
+
+    .hero,
+    .form-card,
+    .table-card,
+    .stat-card {
+      padding: 16px;
+      border-radius: 18px;
+    }
+
+    .hero {
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .hero p { font-size: 0.94rem; }
+
+    .hero-badge {
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    .summary-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .table-topbar {
+      flex-direction: column;
+      align-items: stretch;
+      margin-bottom: 10px;
+    }
+
+    .mobile-hint,
+    .mobile-cards {
+      display: grid;
+    }
+
+    .table-wrap {
+      display: none;
+    }
+
+    .actions,
+    .modal-actions {
+      flex-direction: column;
+    }
+
+    .primary-btn,
+    .secondary-btn,
+    .ghost-btn,
+    .danger-btn,
+    .entry-actions .delete-btn {
+      width: 100%;
+    }
+
+    .entry-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .entry-actions {
+      justify-content: stretch;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .hero h1 { font-size: 1.6rem; }
+    .section-title { font-size: 1.1rem; }
+
+    .section-subtitle,
+    .helper,
+    .stat-sub,
+    .hero p,
+    .modal p {
+      font-size: 0.9rem;
+    }
+
+    .toggle { padding: 12px 14px; }
+    .stat-card { padding: 16px; }
+    .table-card { padding: 16px 12px; }
+    .entry-card { padding: 12px; }
+    .modal { padding: 16px; border-radius: 20px; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero card">
+      <div class="hero-copy">
+        <h1>Öl- und Kühlmittel-Tracker</h1>
+        <p>
+          Nachfüllungen, Ölwechsel und den Verbrauch pro 1.000 Kilometer.
+        </p>
+      </div>
+      <div class="hero-badge" id="entryCounter">0 Einträge</div>
+    </section>
+
+    <section class="summary-grid" id="summaryGrid">
+      <article class="card stat-card">
+        <span class="stat-label">Letzter Kilometerstand</span>
+        <div class="stat-value mono" id="statLastKm">–</div>
+        <div class="stat-sub" id="statLastDate">Noch keine Daten</div>
+      </article>
+      <article class="card stat-card">
+        <span class="stat-label">Einträge gesamt</span>
+        <div class="stat-value mono" id="statEntries">0</div>
+        <div class="stat-sub">Chronologisch erfasst</div>
+      </article>
+      <article class="card stat-card">
+        <span class="stat-label">Ölwechsel</span>
+        <div class="stat-value mono" id="statOilChanges">0</div>
+        <div class="stat-sub">Seit Beginn dokumentiert</div>
+      </article>
+      <article class="card stat-card">
+        <span class="stat-label">Ø Segment-Verbrauch</span>
+        <div class="stat-value mono" id="statAvgSegment">–</div>
+        <div class="stat-sub">auf 1000 km</div>
+      </article>
+    </section>
+
+    <section class="content-grid">
+      <article class="card form-card">
+        <h2 class="section-title">Neuen Eintrag erfassen</h2>
+        <p class="section-subtitle">
+          Neuen Eintrag erfassen, speichern und direkt in der Historie prüfen.
+        </p>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="date">Datum</label>
+            <input type="date" id="date">
+          </div>
+
+          <div class="field">
+            <label for="km">Kilometerstand</label>
+            <input type="number" id="km" placeholder="z. B. 170500" inputmode="numeric">
+          </div>
+
+          <div class="field">
+            <label for="oil">Öl nachgefüllt (ml)</label>
+            <input type="number" id="oil" placeholder="z. B. 500" inputmode="numeric">
+          </div>
+
+          <div class="toggle-group">
+            <label class="toggle">
+              <input type="checkbox" id="oilChange">
+              <span>
+                <span class="toggle-label">Kompletter Ölwechsel</span>
+                <small>Wird in der Historie hervorgehoben und rechnerisch separat behandelt.</small>
+              </span>
+            </label>
+
+            <label class="toggle">
+              <input type="checkbox" id="coolant">
+              <span>
+                <span class="toggle-label">Kühlmittel nachgefüllt</span>
+                <small>Für spätere Nachverfolgung direkt mit protokollieren.</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="primary-btn" onclick="addEntry()">Eintrag speichern</button>
+            <button class="secondary-btn" onclick="exportCSV()">CSV exportieren</button>
+          </div>
+        </div>
+
+
+      </article>
+
+      <article class="card table-card">
+        <div class="table-topbar">
+          <div>
+            <h2 class="section-title">Historie</h2>
+            <p class="section-subtitle">
+              Neueste Einträge stehen oben, inklusive Kilometerständen, Nachfüllungen und berechneten Verbrauchswerten.
+            </p>
+          </div>
+        </div>
+
+
+        <div class="mobile-cards" id="mobileCards"></div>
+
+        <div class="table-wrap">
+          <table id="logTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Datum</th>
+                <th>KM</th>
+                <th>Gefahren</th>
+                <th>Öl</th>
+                <th>Kühlmittel</th>
+                <th>Ölwechsel</th>
+                <th>Seit Ölwechsel</th>
+                <th>Seit letztem Nachfüllen</th>
+                <th>Aktion</th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="deleteModalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+      <h3 id="deleteModalTitle">Eintrag löschen?</h3>
+      <p id="deleteModalText">Dieser Eintrag wird entfernt. Das kannst du nicht automatisch rückgängig machen.</p>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="cancelDeleteBtn">Abbrechen</button>
+        <button class="danger-btn" id="confirmDeleteBtn">Ja, löschen</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+  let pendingDeleteId = null;
+
+  const deleteModalBackdrop = document.getElementById('deleteModalBackdrop');
+  const deleteModalText = document.getElementById('deleteModalText');
+  const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+  const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+  function formatDate(dateString) {
+    const d = new Date(dateString);
+    return d.toLocaleDateString('de-DE');
+  }
+
+  function formatKm(value) {
+    if (value === '-' || value === null || value === undefined || Number.isNaN(Number(value))) return '–';
+    return new Intl.NumberFormat('de-DE').format(Number(value)) + ' km';
+  }
+
+  function formatMl(value) {
+    if (value === '-' || value === null || value === undefined || Number.isNaN(Number(value))) return '–';
+    return new Intl.NumberFormat('de-DE').format(Number(value)) + ' ml';
+  }
+
+  function formatRate(value) {
+    if (value === '-' || value === null || value === undefined || value === '') return '–';
+    return `${value} ml/1000 km`;
+  }
+
+  function badge(text, variant = 'neutral') {
+    return `<span class="badge badge-${variant}">${text}</span>`;
+  }
+
+  function openDeleteModal(id, label) {
+    pendingDeleteId = id;
+    deleteModalText.textContent = `${label} wird gelöscht. Das kannst du nicht automatisch rückgängig machen.`;
+    deleteModalBackdrop.classList.add('visible');
+    deleteModalBackdrop.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeDeleteModal() {
+    pendingDeleteId = null;
+    deleteModalBackdrop.classList.remove('visible');
+    deleteModalBackdrop.setAttribute('aria-hidden', 'true');
+  }
+
+  async function confirmDelete() {
+    if (pendingDeleteId === null) return;
+
+    const id = pendingDeleteId;
+    closeDeleteModal();
+
+    const res = await fetch('/api/entries/' + id, { method: 'DELETE' });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      alert(error.error || 'Löschen fehlgeschlagen');
+      return;
+    }
+
+    loadEntries();
+  }
+
+  cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+  confirmDeleteBtn.addEventListener('click', confirmDelete);
+  deleteModalBackdrop.addEventListener('click', (event) => {
+    if (event.target === deleteModalBackdrop) closeDeleteModal();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && deleteModalBackdrop.classList.contains('visible')) {
+      closeDeleteModal();
+    }
+  });
+
+  function updateSummary(entries) {
+    const count = entries.length;
+    const latest = count ? entries[count - 1] : null;
+    const oilChanges = entries.filter(e => e.oilChange).length;
+
+    const segmentValues = entries
+      .map(e => parseFloat(e.oilPer1000Segment))
+      .filter(v => !Number.isNaN(v) && Number.isFinite(v));
+
+    const avgSegment = segmentValues.length
+      ? (segmentValues.reduce((sum, value) => sum + value, 0) / segmentValues.length).toFixed(2)
+      : '–';
+
+    document.getElementById('entryCounter').textContent = `${count} ${count === 1 ? 'Eintrag' : 'Einträge'}`;
+    document.getElementById('statEntries').textContent = count;
+    document.getElementById('statOilChanges').textContent = oilChanges;
+    document.getElementById('statAvgSegment').textContent = avgSegment === '–' ? '–' : `${avgSegment} ml`;
+    document.getElementById('statLastKm').textContent = latest ? formatKm(latest.km) : '–';
+    document.getElementById('statLastDate').textContent = latest ? `Letzter Eintrag: ${formatDate(latest.date)}` : 'Noch keine Daten';
+  }
+
+  function renderMobileCards(entries) {
+    const mobileCards = document.getElementById('mobileCards');
+    mobileCards.innerHTML = '';
+
+    if (!entries.length) {
+      mobileCards.innerHTML = `<div class="empty-state">Noch keine Einträge vorhanden.</div>`;
+      return;
+    }
+
+    const total = entries.length;
+
+    entries.forEach((e, i) => {
+      const card = document.createElement('div');
+      card.className = `entry-card${e.oilChange ? ' oil-change' : ''}`;
+
+      const displayNumber = total - i;
+      const oilText = e.oilChange ? 'Ölwechsel' : formatMl(e.oil);
+      const deleteLabel = `Eintrag vom ${formatDate(e.date)}`;
+
+      card.innerHTML = `
+        <div class="entry-card-top">
+          <div>
+            <div class="entry-card-title">Eintrag #${displayNumber}</div>
+            <div class="entry-card-date">${formatDate(e.date)}</div>
+          </div>
+          <div>${e.oilChange ? badge('Ölwechsel', 'green') : badge('Eintrag', 'neutral')}</div>
+        </div>
+
+        <div class="entry-grid">
+          <div class="entry-item">
+            <span class="entry-item-label">Kilometerstand</span>
+            <div class="entry-item-value mono">${formatKm(e.km)}</div>
+          </div>
+          <div class="entry-item">
+            <span class="entry-item-label">Gefahren seit letztem Eintrag</span>
+            <div class="entry-item-value mono">${e.kmDriven === '-' ? '–' : formatKm(e.kmDriven)}</div>
+          </div>
+          <div class="entry-item">
+            <span class="entry-item-label">Öl</span>
+            <div class="entry-item-value">${oilText}</div>
+          </div>
+          <div class="entry-item">
+            <span class="entry-item-label">Verbrauch seit Ölwechsel</span>
+            <div class="entry-item-value">${formatRate(e.oilPer1000Cumulative)}</div>
+          </div>
+          <div class="entry-item">
+            <span class="entry-item-label">Verbrauch seit letztem Nachfüllen</span>
+            <div class="entry-item-value">${formatRate(e.oilPer1000Segment)}</div>
+          </div>
+        </div>
+
+        <div class="entry-badges">
+          ${e.coolant ? badge('Kühlmittel nachgefüllt', 'blue') : badge('Kein Kühlmittel', 'neutral')}
+          ${e.oilChange ? badge('Ölwechsel durchgeführt', 'green') : badge('Kein Ölwechsel', 'neutral')}
+        </div>
+
+        <div class="entry-actions">
+          <button class="delete-btn" onclick="openDeleteModal(${e.id}, '${deleteLabel.replace(/'/g, "\\'")}')">Löschen</button>
+        </div>
+      `;
+
+      mobileCards.appendChild(card);
+    });
+  }
+
+  async function loadEntries() {
+    const res = await fetch('/api/entries');
+    const entries = await res.json();
+    const displayEntries = [...entries].reverse();
+
+    const tableBody = document.getElementById('logTableBody');
+    tableBody.innerHTML = '';
+
+    if (!displayEntries.length) {
+      tableBody.innerHTML = `<tr><td colspan="10" class="empty-state">Noch keine Einträge vorhanden.</td></tr>`;
+      renderMobileCards(displayEntries);
+      updateSummary(entries);
+      return;
+    }
+
+    displayEntries.forEach((e, i) => {
+      const row = document.createElement('tr');
+      if (e.oilChange) row.className = 'oil-change';
+
+      const oilContent = e.oilChange
+        ? badge('Ölwechsel', 'green')
+        : `<span class="mono">${formatMl(e.oil)}</span>`;
+
+      const coolantContent = e.coolant
+        ? badge('Ja', 'blue')
+        : badge('Nein', 'neutral');
+
+      const oilChangeContent = e.oilChange
+        ? badge('Ja', 'green')
+        : badge('Nein', 'neutral');
+
+      const deleteLabel = `Eintrag vom ${formatDate(e.date)}`;
+
+      row.innerHTML = `
+        <td class="mono">${displayEntries.length - i}</td>
+        <td>${formatDate(e.date)}</td>
+        <td class="mono">${formatKm(e.km)}</td>
+        <td class="mono">${e.kmDriven === '-' ? '–' : formatKm(e.kmDriven)}</td>
+        <td>${oilContent}</td>
+        <td>${coolantContent}</td>
+        <td>${oilChangeContent}</td>
+        <td class="mono">${e.oilPer1000Cumulative ? `${e.oilPer1000Cumulative} ml/1000 km` : '–'}</td>
+        <td class="mono">${e.oilPer1000Segment ? `${e.oilPer1000Segment} ml/1000 km` : '–'}</td>
+        <td><button class="delete-btn" onclick="openDeleteModal(${e.id}, '${deleteLabel.replace(/'/g, "\\'")}')">Löschen</button></td>
+      `;
+
+      tableBody.appendChild(row);
+    });
+
+    renderMobileCards(displayEntries);
+    updateSummary(entries);
+  }
+
+  async function addEntry() {
+    const date = document.getElementById('date').value;
+    const km = parseInt(document.getElementById('km').value, 10);
+    const oil = parseInt(document.getElementById('oil').value, 10) || 0;
+    const coolant = document.getElementById('coolant').checked;
+    const oilChange = document.getElementById('oilChange').checked;
+
+    if (!date || !km) {
+      alert('Datum und Kilometerstand erforderlich!');
+      return;
+    }
+
+    const res = await fetch('/api/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, km, oil, coolant, oilChange })
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      alert(error.error || 'Speichern fehlgeschlagen');
+      return;
+    }
+
+    document.getElementById('km').value = '';
+    document.getElementById('oil').value = '';
+    document.getElementById('coolant').checked = false;
+    document.getElementById('oilChange').checked = false;
+
+    loadEntries();
+  }
+
+  function exportCSV() {
+    window.location = '/api/export/csv';
+  }
+
+  loadEntries();
+</script>
+</body>
+</html>
