@@ -1,10 +1,114 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const fs = require('fs-extra');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json({ limit: '16kb' }));
+
+const authUsername = process.env.AUTH_USERNAME;
+const authPassword = process.env.AUTH_PASSWORD;
+const sessionSecret = process.env.SESSION_SECRET;
+const cookieSecure = process.env.SESSION_COOKIE_SECURE === 'true';
+const sessionCookieName = 'oil_tracker_session';
+const sessionDurationMs = 8 * 60 * 60 * 1000;
+
+if (!authUsername || !authPassword || !sessionSecret || sessionSecret.length < 32) {
+  console.error('AUTH_USERNAME, AUTH_PASSWORD und SESSION_SECRET (mindestens 32 Zeichen) müssen gesetzt sein.');
+  process.exit(1);
+}
+
+function safeEqual(left, right) {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function signSession(payload) {
+  return crypto.createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+}
+
+function readSessionCookie(req) {
+  const cookieHeader = req.headers.cookie || '';
+  const cookie = cookieHeader.split(';').map(value => value.trim()).find(value => value.startsWith(`${sessionCookieName}=`));
+  if (!cookie) return false;
+
+  try {
+    const token = decodeURIComponent(cookie.slice(sessionCookieName.length + 1));
+    const separator = token.lastIndexOf('.');
+    if (separator < 1) return false;
+
+    const payload = token.slice(0, separator);
+    const signature = token.slice(separator + 1);
+    if (!safeEqual(signature, signSession(payload))) return false;
+
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return Number.isFinite(session.exp) && session.exp > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function setSessionCookie(res) {
+  const payload = Buffer.from(JSON.stringify({ exp: Date.now() + sessionDurationMs })).toString('base64url');
+  const token = `${payload}.${signSession(payload)}`;
+  const secure = cookieSecure ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${sessionCookieName}=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${sessionDurationMs / 1000}${secure}`);
+}
+
+function clearSessionCookie(res) {
+  const secure = cookieSecure ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${sessionCookieName}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure}`);
+}
+
+const loginAttempts = new Map();
+const loginWindowMs = 15 * 60 * 1000;
+const maxLoginAttempts = 10;
+
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
+app.get('/api/session', (req, res) => {
+  res.json({ authenticated: readSessionCookie(req) });
+});
+
+app.post('/api/login', (req, res) => {
+  const now = Date.now();
+  const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+  const attempt = loginAttempts.get(clientIp);
+
+  if (attempt && now - attempt.startedAt < loginWindowMs && attempt.count >= maxLoginAttempts) {
+    return res.status(429).json({ error: 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.' });
+  }
+
+  const { username, password } = req.body || {};
+  if (!safeEqual(username || '', authUsername) || !safeEqual(password || '', authPassword)) {
+    const current = attempt && now - attempt.startedAt < loginWindowMs
+      ? attempt
+      : { startedAt: now, count: 0 };
+    current.count += 1;
+    loginAttempts.set(clientIp, current);
+    return res.status(401).json({ error: 'Benutzername oder Passwort ist nicht korrekt.' });
+  }
+
+  loginAttempts.delete(clientIp);
+  setSessionCookie(res);
+  res.json({ authenticated: true });
+});
+
+app.post('/api/logout', (req, res) => {
+  clearSessionCookie(res);
+  res.json({ success: true });
+});
+
+app.use('/api', (req, res, next) => {
+  if (!readSessionCookie(req)) {
+    return res.status(401).json({ error: 'Bitte anmelden.' });
+  }
+  next();
+});
 
 const dataDir = path.join(__dirname, 'data');
 const dataFile = path.join(dataDir, 'data.json');

@@ -60,6 +60,49 @@
       calc(14px + var(--safe-left));
   }
 
+  .login-screen {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  .login-card {
+    width: min(100%, 420px);
+    padding: 28px;
+    border-radius: var(--radius-xl);
+    background: var(--surface-strong);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  .login-card h1 { margin: 0 0 8px; font-size: 1.7rem; }
+  .login-card p { margin: 0 0 22px; color: var(--muted); line-height: 1.5; }
+  .login-card label { display: block; margin: 14px 0 7px; font-weight: 650; }
+  .login-card input {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font: inherit;
+    background: #fff;
+  }
+  .login-card button { width: 100%; margin-top: 20px; }
+  .login-error { min-height: 1.4em; margin-top: 12px; color: var(--danger); }
+  .login-screen[hidden], .page[hidden] { display: none !important; }
+  .hero-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .logout-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
   .hero {
     display: flex;
     align-items: flex-start;
@@ -624,7 +667,20 @@
 </style>
 </head>
 <body>
-  <div class="page">
+  <section class="login-screen" id="loginScreen" aria-labelledby="loginTitle">
+    <form class="login-card" id="loginForm">
+      <h1 id="loginTitle">Öl-Check anmelden</h1>
+      <p>Bitte melde dich an, um deine Fahrzeugdaten zu öffnen.</p>
+      <label for="loginUsername">Benutzername</label>
+      <input id="loginUsername" name="username" autocomplete="username" required>
+      <label for="loginPassword">Passwort</label>
+      <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+      <button class="primary-btn" type="submit" id="loginButton">Anmelden</button>
+      <div class="login-error" id="loginError" role="alert" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <div class="page" id="appShell" hidden>
     <section class="hero card">
       <div class="hero-copy">
         <h1>Öl- und Kühlmittel-Tracker</h1>
@@ -632,7 +688,10 @@
           Nachfüllungen, Ölwechsel und den Verbrauch pro 1.000 Kilometer.
         </p>
       </div>
-      <div class="hero-badge" id="entryCounter">0 Einträge</div>
+      <div class="hero-actions">
+        <div class="hero-badge" id="entryCounter">0 Einträge</div>
+        <button class="logout-btn" type="button" id="logoutButton">Abmelden</button>
+      </div>
     </section>
 
     <section class="summary-grid" id="summaryGrid">
@@ -758,6 +817,80 @@
 <script>
   document.getElementById('date').value = new Date().toISOString().split('T')[0];
 
+  const loginScreen = document.getElementById('loginScreen');
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const loginButton = document.getElementById('loginButton');
+  const appShell = document.getElementById('appShell');
+
+  function showLogin(message = '') {
+    appShell.hidden = true;
+    loginScreen.hidden = false;
+    loginError.textContent = message;
+  }
+
+  function showApp() {
+    loginScreen.hidden = true;
+    appShell.hidden = false;
+    loginError.textContent = '';
+  }
+
+  async function apiFetch(url, options) {
+    const res = await fetch(url, options);
+    if (res.status === 401) showLogin('Bitte melde dich erneut an.');
+    return res;
+  }
+
+  loginForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    loginButton.disabled = true;
+    loginError.textContent = '';
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('loginUsername').value,
+          password: document.getElementById('loginPassword').value
+        })
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        loginError.textContent = result.error || 'Anmeldung fehlgeschlagen.';
+        return;
+      }
+      loginForm.reset();
+      showApp();
+      await loadEntries();
+    } catch {
+      loginError.textContent = 'Verbindung fehlgeschlagen. Bitte erneut versuchen.';
+    } finally {
+      loginButton.disabled = false;
+    }
+  });
+
+  document.getElementById('logoutButton').addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    showLogin();
+    loginForm.reset();
+  });
+
+  async function initializeApp() {
+    try {
+      const res = await fetch('/api/session');
+      const session = await res.json();
+      if (session.authenticated) {
+        showApp();
+        await loadEntries();
+      } else {
+        showLogin();
+      }
+    } catch {
+      showLogin('Verbindung fehlgeschlagen. Bitte Seite neu laden.');
+    }
+  }
+
   let pendingDeleteId = null;
 
   const deleteModalBackdrop = document.getElementById('deleteModalBackdrop');
@@ -808,7 +941,8 @@
     const id = pendingDeleteId;
     closeDeleteModal();
 
-    const res = await fetch('/api/entries/' + id, { method: 'DELETE' });
+    const res = await apiFetch('/api/entries/' + id, { method: 'DELETE' });
+    if (res.status === 401) return;
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       alert(error.error || 'Löschen fehlgeschlagen');
@@ -916,7 +1050,8 @@
   }
 
   async function loadEntries() {
-    const res = await fetch('/api/entries');
+    const res = await apiFetch('/api/entries');
+    if (res.status === 401) return;
     const entries = await res.json();
     const displayEntries = [...entries].reverse();
 
@@ -980,11 +1115,12 @@
       return;
     }
 
-    const res = await fetch('/api/entries', {
+    const res = await apiFetch('/api/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date, km, oil, coolant, oilChange })
     });
+    if (res.status === 401) return;
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
@@ -1000,11 +1136,18 @@
     loadEntries();
   }
 
-  function exportCSV() {
-    window.location = '/api/export/csv';
+  async function exportCSV() {
+    const res = await apiFetch('/api/export/csv');
+    if (!res.ok) return;
+    const url = URL.createObjectURL(await res.blob());
+    const download = document.createElement('a');
+    download.href = url;
+    download.download = 'oel-check-export.csv';
+    download.click();
+    URL.revokeObjectURL(url);
   }
 
-  loadEntries();
+  initializeApp();
 </script>
 </body>
 </html>
