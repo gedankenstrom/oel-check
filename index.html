@@ -120,9 +120,9 @@
   }
 
   .hero {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 18px;
     padding: 22px;
     border-radius: var(--radius-xl);
@@ -609,7 +609,7 @@
     }
 
     .hero {
-      flex-direction: column;
+      grid-template-columns: minmax(0, 1fr);
       align-items: stretch;
       gap: 14px;
     }
